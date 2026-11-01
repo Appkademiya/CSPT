@@ -1,0 +1,115 @@
+services:
+  attack_box:
+    image: kalilinux/kali-rolling
+    container_name: cspt_attack_box
+    stdin_open: true
+    tty: true
+    ports:
+      - "8080:8080"
+    networks:
+      corp_it_net:
+        ipv4_address: 10.0.40.100
+    command: >
+      /bin/bash -c "apt-get update && apt-get install -y curl nmap proxychains4 nano iputils-ping && /bin/bash"
+    environment:
+      - TERM=xterm-256color
+
+  corp_web:
+    image: appkademiya/cspt-corp-web:latest
+    container_name: cspt_corp_web
+    ports:
+      - "80:80" 
+    networks:
+      corp_it_net:
+        ipv4_address: 10.0.40.10
+    restart: unless-stopped
+
+  it_jump:
+    image: appkademiya/cspt-it-jump:latest
+    container_name: cspt_it_jump
+    networks:
+      corp_it_net:
+        ipv4_address: 10.0.40.20
+      idmz_net:
+        ipv4_address: 10.0.30.10
+    restart: unless-stopped
+
+  historian:
+    image: appkademiya/cspt-historian:latest
+    container_name: cspt_historian
+    networks:
+      idmz_net:
+        ipv4_address: 10.0.30.20
+    restart: unless-stopped
+
+  ews:
+    image: appkademiya/cspt-ews:latest
+    container_name: cspt_ews
+    networks:
+      idmz_net:
+        ipv4_address: 10.0.30.30
+      scada_net:
+        ipv4_address: 10.0.20.10
+      plc_net:
+        ipv4_address: 10.0.10.10
+    restart: unless-stopped
+
+  hmi:
+    image: appkademiya/cspt-hmi:latest
+    container_name: cspt_hmi
+    networks:
+      scada_net:
+        ipv4_address: 10.0.20.20
+    restart: unless-stopped
+
+  plc_primary:
+    image: appkademiya/cspt-plc-primary:latest
+    container_name: cspt_plc_primary
+    networks:
+      plc_net:
+        ipv4_address: 10.0.10.20
+    restart: unless-stopped
+
+  sis:
+    image: appkademiya/cspt-sis:latest
+    container_name: cspt_sis
+    networks:
+      plc_net:
+        ipv4_address: 10.0.10.30
+    restart: unless-stopped
+
+  physics_engine:
+    image: appkademiya/cspt-physics-engine:latest
+    container_name: cspt_physics_engine
+    networks:
+      plc_net:
+        ipv4_address: 10.0.10.40
+    depends_on:
+      - plc_primary
+      - sis
+    restart: unless-stopped
+
+networks:
+  corp_it_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.40.0/24
+  idmz_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.0.30.0/24
+  scada_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.0.20.0/24
+  plc_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.0.10.0/24
